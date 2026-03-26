@@ -2,17 +2,13 @@ import pandas as pd
 import numpy as np
 import os
 import random
+import matplotlib.pyplot as plt
 from trees_decision import createTree, classify
+from tree_plotter import createPlot
 
-def load_wine_data():
-    """加载 Wine 数据集"""
-    data_path = os.path.join(os.path.dirname(__file__),'data/wine/wine.data')
-    df = pd.read_csv(data_path, header=None)
-    # 移动标签到最后一列
-    cols = df.columns.tolist()
-    new_df = df[cols[1:] + [cols[0]]]
-    labels = [f"Feature_{i}" for i in range(len(new_df.columns)-1)]
-    return new_df.values.tolist(), labels
+# 设置中文字体以支持中文显示
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
 
 def load_titanic_data():
     """加载 Titanic 数据集"""
@@ -30,12 +26,30 @@ def load_titanic_data():
     # 转换离散特征
     df['Sex'] = df['Sex'].map({'male': 0, 'female': 1})
     
-    # 移动标签到最后一列
+    # 将类别标签移到最后一列
     cols = df.columns.tolist()
     new_df = df[['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Survived']]
     labels = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare']
     
     return new_df.values.tolist(), labels
+
+def load_wine_data():
+    """加载 Wine数据集"""
+    data_path=os.path.join(os.path.dirname(__file__),'data/wine/wine.data')
+    df=pd.read_csv(data_path,header=None)
+
+    # Wine数据集标准字段名
+    wine_labels=[
+        "Alcohol","Malic acid","Ash","Alcalinity of ash","Magnesium",
+        "Total phenols","Flavanoids","Nonflavanoid phenols","Proanthocyanins",
+        "Color intensity","Hue","OD280/OD315","Proline"
+    ]
+
+    # 将类别标签移到最后一列
+    cols=df.columns.tolist()
+    new_df=df[cols[1:]+[cols[0]]]
+
+    return new_df.values.tolist(),wine_labels
 
 def evaluate_accuracy(tree, labels, test_data):
     """计算准确率"""
@@ -73,6 +87,12 @@ def cross_validation(data, labels, method='C4.5', k=5):
         
     return np.mean(accuracies)
 
+def plot_decision_tree(data, labels, method='C4.5', dataset_name=''):
+    """绘制决策树图"""
+    print(f"生成{dataset_name}数据集的{method}决策树图")
+    tree = createTree(data, labels[:], method=method)
+    createPlot(tree, title=f"{dataset_name} Decision Tree ({method})")
+
 def run_experiments():
     datasets = [
         ("Titanic", load_titanic_data),
@@ -89,11 +109,18 @@ def run_experiments():
         for method in methods:
             # 留出法
             ho_acc = hold_out_validation(data, labels, method=method)
-            # 5折交叉验证
+            # 5 折交叉验证
             cv_acc = cross_validation(data, labels, method=method, k=5)
             
             print(f"{name:<10} | {method:<6} | {ho_acc:<10.4f} | {cv_acc:<10.4f}")
     print("="*50)
+    
+    # 绘制决策树图
+    print("\n绘制决策树图...")
+    for name, load_fn in datasets:
+        data, labels = load_fn()
+        for method in methods:
+            plot_decision_tree(data, labels, method=method, dataset_name=name)
 
 if __name__ == '__main__':
     run_experiments()
